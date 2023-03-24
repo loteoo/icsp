@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+VERSION="0.1"
+
+help() {
+  cat << EOT
+DESCRIPTION
+  icsp - iCalendar (.ics) parser. v$VERSION
+  Reads an iCalendar stream from stdin (or from a file)
+  and outputs a CSV of it's contents to stdout (or to a file).
+
+USAGE
+  icsp [-th] [-c columns] [file ...]
+
+OPTIONS
+  -c <string>     CSV of columns to output". Shows all by default.
+  -t              Tabular output using 'column' command.
+  -h              Show this help text.
+
+EXAMPLES
+  # Download a .ics calendar from the internet as CSV
+  curl -s https://foo.bar/calencar.ics | icsp > output.csv
+
+  # Display specified fields from a local ics file in table format 
+  icsp -c 'DTSTART,DTEND,SUMMARY' -t input.ics
+
+EOT
+  exit "$1";
+}
+
+# Parse options
+while getopts "tho:c:" arg; do
+  case $arg in
+    c) columns="$OPTARG";;
+    t) table_format=1;;
+    h) help 0;;
+    *) help 1;;
+  esac
+done
+
+# Load input file
+shift $((OPTIND - 1))
+if [[ -n ${1+x} ]]; then
+  raw_input="$(cat "$1")"
+else
+  if [[ -t 0 ]]; then
+    help 1
+  else
+    raw_input="$(cat)"
+  fi
+fi
+
+object_type="VEVENT"
+delimiter=","
+
+get-var-key() {
+  echo "$1_$(echo "$2" | tr '-' '_')"
+}
+
+collapsed="${raw_input//$'\r\n '}" # Collapse formatting linebreaks to simplify logic
+
+process-input() {
+  is_in_event="false"
+  id="0"
+  cols=""
+
+  while IFS=: read key value; do
+    value=${value%$'\r'}
+    key=${key%%;*}
+    if [[ "$key" == "BEGIN" && "$value" == "$object_type" ]]; then
+      id=$((id + 1))
+      is_in_event="true"
+      continue
+    fi
+    if [[ "$key" == "END" && "$value" == "$object_type" ]]; then
+      is_in_event="false"
+      continue
+    fi
+
+    if [[ "$is_in_event" == "true" ]]; then
+
+      if [[ "$cols" != *"$key"* ]]; then
+        if [[ -n ${columns+x} ]]; then
+          if [[ "$columns" == *"$key"* ]]; then
+            cols="$cols $key"
+          fi
+        else
+          cols="$cols $key"
+        fi
+      fi
+
+      varkey="$(get-var-key "$id" "$key")"
+      declare "v_$varkey"="$value";
+    fi
+
+  done <<< "$collapsed"
+
+  headers="$(echo "$cols" | tr ' ' "$delimiter")"
+  echo "${headers:1}"
+
+  for ((i = 1 ; i <= id ; i++)); do
+    row=""
+    for col in $cols; do
+      varkey="$(get-var-key "$i" "$col")"
+      foo="v_$varkey"
+      row="${row}${delimiter}${!foo}"
+    done
+    echo "${row:1}"
+  done
+}
+
+output="$(process-input)"
+
+if [[ -n ${table_format+x} ]]; then
+  output=$(echo "$output" | column -t -s "${delimiter}")
+fi
+
+echo "$output"
