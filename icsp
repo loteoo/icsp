@@ -18,7 +18,7 @@ DESCRIPTION
   The icsp utility reads an iCalendar stream from stdin (or from a file)
   and outputs a CSV of it's contents to stdout.
   
-  See https://github.com/loteoo/icsp for more information.
+  See https://github.com/loteoo/icsp for examples.
 
 EOT
   exit "$1";
