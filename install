@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REQUIRES_RESTART="false"
+USR_BIN_PATH="$HOME/bin"
+SCRIPT_PATH="$USR_BIN_PATH/icsp"
+
+if [[ ! -d "$USR_BIN_PATH" ]]; then
+  echo "Creating user $USR_BIN_PATH folder..."
+  mkdir "$USR_BIN_PATH"
+fi
+
+if [[ "$(cat /etc/paths)" != *"$USR_BIN_PATH"* ]]; then
+  echo "Adding $USR_BIN_PATH to PATH (requires sudo)..."
+  sudo bash -c "echo '$USR_BIN_PATH' >> /etc/paths"
+  REQUIRES_RESTART="true"
+fi
+
+echo "Downloading script from github..."
+curl -s https://raw.githubusercontent.com/loteoo/icsp/main/icsp -o "$SCRIPT_PATH"
+
+if [[ ! -x "$SCRIPT_PATH" ]]; then
+  echo "Making script executable..."
+  chmod +x "$SCRIPT_PATH"
+fi
+
+echo "Done! 🎉"
+echo "Star on github if you like icsp to show support."
+
+if [[ "$REQUIRES_RESTART" == "true" ]]; then
+  echo "Please restart your terminal to make icsp available."
+fi
+
+echo "Run 'icsp -h' to see usage. Enjoy!"

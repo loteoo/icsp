@@ -97,8 +97,8 @@ for ((i = 1 ; i <= id ; i++)); do
   row=""
   for col in $cols; do
     varkey="$(get-var-key "$i" "$col")"
-    foo="v_$varkey"
-    row="${row}${delimiter}${!foo}"
+    value="v_$varkey"
+    row="${row}${delimiter}\"${!value//\"/\"\"}\""
   done
   echo "${row:1}"
 done
