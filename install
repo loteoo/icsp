@@ -6,7 +6,7 @@ USR_BIN_PATH="$HOME/bin"
 SCRIPT_PATH="$USR_BIN_PATH/icsp"
 
 if [[ ! -d "$USR_BIN_PATH" ]]; then
-  echo "Creating user $USR_BIN_PATH folder..."
+  echo "Creating $USR_BIN_PATH folder..."
   mkdir "$USR_BIN_PATH"
 fi
 
