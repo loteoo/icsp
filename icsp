@@ -98,7 +98,11 @@ for ((i = 1 ; i <= id ; i++)); do
   for col in $cols; do
     varkey="$(get-var-key "$i" "$col")"
     value="v_$varkey"
-    row="${row}${delimiter}\"${!value//\"/\"\"}\""
+    if [[ "${!value}" == *','* ]]; then
+      row="${row}${delimiter}\"${!value//\"/\"\"}\""
+    else
+      row="${row}${delimiter}${!value}"
+    fi
   done
   echo "${row:1}"
 done
