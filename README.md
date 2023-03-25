@@ -31,6 +31,10 @@ curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
 icsp -c 'DTSTART,DTEND,SUMMARY' calendar.ics | column -t -s ','
 ```
 
+Some public calendars to try out:
+- [Phases of the Moon](https://calendar.google.com/calendar/ical/ht3jlfaac5lfd6263ulfh4tql8%40group.calendar.google.com/public/basic.ics)
+- [Holidays in Canada](https://calendar.google.com/calendar/ical/en.canadian%23holiday%40group.v.calendar.google.com/public/basic.ics)
+
 How to get some .ics files to try it out:
 
 <details><summary>From Google Calendar</summary>
