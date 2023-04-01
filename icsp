@@ -1,108 +1,169 @@
 #!/usr/bin/env bash
+set -e
 
-VERSION="0.1"
+version="0.2"
 
-help() {
-  cat << EOT
-NAME
-  icsp - iCalendar (.ics) parser. v$VERSION
+help="
+icsp - iCalendar (.ics) parser. v$version
 
-SYNOPSIS
-  icsp [-h] [-c columns] [file ...]
+Reads an iCalendar stream from stdin (or from a file)
+and outputs a CSV of it's contents to stdout.
 
-OPTIONS
-  -c <string>   CSV of columns to output. Shows all by default.
+Usage:
+  icsp [-h] [-c columns] [-d delimiter] [file ...]
+
+Options:
+  -c <string>   Comma seperated list of fields to parse. Order is preserved, case insensitive.
+  -d <string>   Delimiter character to use for seperating values. Default: ','
   -h            Show this help text.
-
-DESCRIPTION
-  The icsp utility reads an iCalendar stream from stdin (or from a file)
-  and outputs a CSV of it's contents to stdout.
   
-  See https://github.com/loteoo/icsp for examples.
+Examples:
+  # Basic usage
+  icsp calendar.ics > calendar.csv
 
-EOT
-  exit "$1";
+  # Download calendar from the internet as CSV
+  curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
+
+  # Display specified fields in table format using 'column' command
+  icsp -c 'dtstart,summary,duration' -d '|' calendar.ics | column -t -s '|' | less -S
+"
+
+bad_usage="See 'icsp -h' for usage."
+
+throw() {
+  echo "$@" 1>&2
+  exit 1
 }
 
+### Parse inputs
+
+dtcolumns="DTSTART,DTEND,DTSTAMP,CREATED,LAST-MODIFIED"
+columns="DTSTART,DTEND,SUMMARY,DURATION,ORGANIZER,LOCATION,DESCRIPTION,RRULE,STATUS,SEQUENCE,UID,CATEGORIES,URL,CLASS,TRANSP,DTSTAMP,CREATED,LAST-MODIFIED"
+delimiter=","
+component="VEVENT"
+
 # Parse options
-while getopts "hc:" arg; do
+while getopts "c:d:x:h" arg; do
   case $arg in
-    c) columns="$OPTARG";;
-    h) help 0;;
-    *) help 1;;
+    c) columns="$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')";;
+    d) delimiter="$OPTARG";;
+    x) component="$OPTARG";;
+    h) echo "$help"; exit 0;;
+    *) throw "$bad_usage";;
   esac
 done
 
-# Load input file
+# Validate that there's stdin OR file path
 shift $((OPTIND - 1))
-if [[ -n ${1+x} ]]; then
-  raw_input="$(cat "$1")"
-else
-  if [[ -t 0 ]]; then
-    help 1
-  else
-    raw_input="$(cat)"
-  fi
+if [[ -z ${1+x} && -t 0 ]]; then
+  throw "No stdin or input specified. $bad_usage"
 fi
 
-object_type="VEVENT"
-delimiter=","
+if [[ -n "${*:2}" ]]; then
+  throw "Input file should be the last argument. $bad_usage"
+fi
 
-get-var-key() {
-  echo "$1_$(echo "$2" | tr '-' '_')"
-}
-
-collapsed="${raw_input//$'\r\n '}" # Collapse formatting linebreaks to simplify logic
+### Let's roll!
 
 # Loop state
 is_in_event="false"
-id="0"
-cols=""
 
-while IFS=: read key value; do
-  value=${value%$'\r'}
-  key=${key%%;*}
-  if [[ "$key" == "BEGIN" && "$value" == "$object_type" ]]; then
-    id=$((id + 1))
-    is_in_event="true"
-    continue
+get-var-key() {
+  echo "${component}_$(echo "$1" | tr '-' '_')"
+}
+
+iso-datetime() {
+  if [[ $1 = *T* ]]; then
+    dt="${1:0:4}-${1:4:2}-${1:6:2} ${1:9:2}:${1:11:2}:${1:13:2}"
+  else
+    dt="${1:0:4}-${1:4:2}-${1:6:2} 00:00:00"
   fi
-  if [[ "$key" == "END" && "$value" == "$object_type" ]]; then
-    is_in_event="false"
-    continue
+  echo "$dt"
+}
+
+to-epoch() {
+  if date --version >/dev/null 2>&1 ; then
+    date -d "$1" +%s
+  else
+    date -j -f '%Y-%m-%d %H:%M:%S' "$1" +%s
   fi
+}
 
-  if [[ "$is_in_event" == "true" ]]; then
-
-    if [[ "$cols" != *"$key"* ]]; then
-      if [[ -n ${columns+x} ]]; then
-        if [[ "$columns" == *"$key"* ]]; then
-          cols="$cols $key"
-        fi
-      else
-        cols="$cols $key"
-      fi
-    fi
-
-    varkey="$(get-var-key "$id" "$key")"
-    declare "v_$varkey"="$value";
-  fi
-
-done <<< "$collapsed"
-
-headers="$(echo "$cols" | tr ' ' "$delimiter")"
-echo "${headers:1}"
-
-for ((i = 1 ; i <= id ; i++)); do
-  row=""
-  for col in $cols; do
-    varkey="$(get-var-key "$i" "$col")"
-    value="v_$varkey"
-    if [[ "${!value}" == *','* ]]; then
-      row="${row}${delimiter}\"${!value//\"/\"\"}\""
+get-duration() {
+  seconds=$(( $(to-epoch "$2") - $(to-epoch "$1") ))
+  hours=$(awk "BEGIN{print $seconds / 3600}")
+  if [[ "$hours" == *"."* ]]; then
+    decimals="${hours#*.}"
+    minutes=$(awk "BEGIN{print 0.$decimals * 60}")
+    hour="${hours%.*}"
+    if [[ "$hour" == "0" ]]; then
+      echo "${minutes}m"
     else
-      row="${row}${delimiter}${!value}"
+      echo "${hour}h${minutes}m"
     fi
-  done
-  echo "${row:1}"
-done
+  else
+    echo "${hours}h"
+  fi
+}
+
+handle-line() {
+  raw_key="${1%%:*}"
+  raw_value="${1#*:}"
+  key="${raw_key%%;*}"
+  value="${raw_value//\\,/,}"
+
+  if [[ "$key" == "BEGIN" && "$value" == "$component" ]]; then
+    is_in_event="true"
+    return
+  fi
+
+  if [[ "$is_in_event" == "true" && "DTSTART,DTEND,$columns" == *"$key"* ]]; then
+    vkey="$(get-var-key "$key")"
+    eval "$vkey=\"\$value\"";
+  fi
+  
+  if [[ "$key" == "END" && "$value" == "$component" ]]; then
+    is_in_event="false"
+    row=""
+    for col in ${columns//,/ }; do
+      vstartkey="$(get-var-key "DTSTART")"
+      vendkey="$(get-var-key "DTEND")"
+      if [[ "$col" == "DURATION" && -n "${!vstartkey}" && -n "${!vendkey}" ]]; then
+        dtstart="$(iso-datetime "${!vstartkey}")"
+        dtend="$(iso-datetime "${!vendkey}")"
+        cached_value="$(get-duration "$dtstart" "$dtend")"
+      else
+        vkey="$(get-var-key "$col")"
+        cached_value="${!vkey}"
+      fi
+
+      if [[ "$dtcolumns" == *"$col"* && -n "$cached_value" ]]; then
+        cached_value="$(iso-datetime "$cached_value")"
+      fi
+
+      if [[ "$cached_value" == *"$delimiter"* ]]; then
+        escaped_value="\"${cached_value//\"/\"\"}\""
+      else
+        escaped_value="$cached_value"
+      fi
+      row="${row}${delimiter}${escaped_value}"
+    done
+    echo "${row:1}"
+    return
+  fi
+
+}
+
+echo "$columns" | tr '[:upper:]' '[:lower:]' | tr ',' "$delimiter" 
+
+wip_line=""
+while IFS= read -r raw_line; do
+  if [[ "$raw_line" == " "* ]]; then
+    no_space="${raw_line## }"
+    wip_line="$wip_line${no_space//$'\r'}"
+  else
+    handle-line "$wip_line"
+    wip_line="${raw_line//$'\r'}"
+  fi
+done < <(cat $1)
+handle-line "$wip_line"

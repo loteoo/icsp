@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
 
 REQUIRES_RESTART="false"
 USR_BIN_PATH="$HOME/bin"
