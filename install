@@ -1,34 +1,42 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -eu
 
-REQUIRES_RESTART="false"
-USR_BIN_PATH="$HOME/bin"
-SCRIPT_PATH="$USR_BIN_PATH/icsp"
-
-if [[ ! -d "$USR_BIN_PATH" ]]; then
-  echo "Creating $USR_BIN_PATH folder..."
-  mkdir "$USR_BIN_PATH"
-fi
-
-if [[ "$(cat /etc/paths)" != *"$USR_BIN_PATH"* ]]; then
-  echo "Adding $USR_BIN_PATH to PATH (requires sudo)..."
-  sudo bash -c "echo '$USR_BIN_PATH' >> /etc/paths"
-  REQUIRES_RESTART="true"
-fi
+REQUIRES_NEW_PATH="false"
+USR_BIN_PATH="/usr/local/bin"
+ALT_BIN_PATH="$HOME/bin"
+SCRIPT_TEMP_PATH="$HOME/icsp"
 
 echo "Downloading script from github..."
-curl -s https://raw.githubusercontent.com/loteoo/icsp/main/icsp -o "$SCRIPT_PATH"
+curl -s https://raw.githubusercontent.com/loteoo/icsp/main/icsp -o "$SCRIPT_TEMP_PATH"
 
-if [[ ! -x "$SCRIPT_PATH" ]]; then
+if [ ! -x "$SCRIPT_TEMP_PATH" ]; then
   echo "Making script executable..."
-  chmod +x "$SCRIPT_PATH"
+  chmod +x "$SCRIPT_TEMP_PATH"
+fi
+
+if [ -d "$USR_BIN_PATH" ]; then
+  if [ -w "$USR_BIN_PATH" ]; then
+    echo "Moving to $USR_BIN_PATH"
+    mv "$SCRIPT_TEMP_PATH" "$USR_BIN_PATH/icsp"
+  else
+    echo "Moving to $USR_BIN_PATH/icsp (requires sudo)"
+    sudo mv "$SCRIPT_TEMP_PATH" "$USR_BIN_PATH/icsp"
+  fi
+else
+  if [ ! -d "$ALT_BIN_PATH" ]; then
+    echo "Creating $ALT_BIN_PATH folder..."
+    mkdir "$ALT_BIN_PATH"
+  fi
+  echo "Moving to $ALT_BIN_PATH"
+  mv "$SCRIPT_TEMP_PATH" "$ALT_BIN_PATH/icsp"
+  echo "$PATH" | grep -q "$ALT_BIN_PATH" || REQUIRES_NEW_PATH="true"
 fi
 
 echo "Done! 🎉"
 echo "Star on github if you like icsp to show support."
 
-if [[ "$REQUIRES_RESTART" == "true" ]]; then
-  echo "Please restart your terminal to make icsp available."
+if [ "$REQUIRES_NEW_PATH" = "true" ]; then
+  echo "⚠️ Please add $ALT_BIN_PATH to your executable PATH, then restart your terminal to make icsp available."
+else
+  echo "Run 'icsp -h' to see usage. Enjoy!"
 fi
-
-echo "Run 'icsp -h' to see usage. Enjoy!"
