@@ -21,11 +21,11 @@ Examples:
   # Basic usage
   icsp calendar.ics > calendar.csv
 
+  # Display specific fields as TSV
+  icsp -c 'dtstart,summary,duration' -d $'\t' calendar.ics > calendar.tsv
+
   # Download calendar from the internet as CSV
   curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
-
-  # Display specified fields in table format using 'column' command
-  icsp -c 'dtstart,summary,duration' -d '|' calendar.ics | column -t -s '|' | less -S
 "
 
 see_usage="See 'icsp -h' for usage."

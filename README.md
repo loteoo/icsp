@@ -25,14 +25,36 @@ Run `icsp -h` for usage.
 # Basic usage
 icsp calendar.ics > calendar.csv
 
+# Display specific fields as TSV
+icsp -c 'dtstart,summary,duration' -d $'\t' calendar.ics > calendar.tsv
+
 # Download calendar from the internet as CSV
 curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
-
-# Display specified fields in scrollable table format using 'column' and 'less' command
-icsp -c 'dtstart,summary,duration' -d '|' calendar.ics | column -t -s '|' | less -S
 ```
 
-### Demo commands
+#### Advanced example
+
+What each line does in order:
+1. Only show the 'dtstart', 'summary' and 'duration' columns, in that order
+1. Use a TAB character as the delemiter (tsv)
+1. Use the calendar.ics file
+1. Filter to June 2022 only
+1. Sort chronologically
+1. Align columns
+1. Display result in scrollable area
+
+```sh
+icsp \
+  -c 'dtstart,summary,duration' \
+  -d $'\t' \
+  calendar.ics \
+  | grep '2022-06' \
+  | sort \
+  | column -t -s $'\t' \
+  | less -S
+```
+
+## Demo commands
 
 Canadian 2023 holidays
 ```sh
@@ -68,15 +90,15 @@ curl -s 'https://calendar.google.com/calendar/ical/ht3jlfaac5lfd6263ulfh4tql8%40
 Space flight launch calendar:
 ```sh
 curl -s 'https://calendar.google.com/calendar/ical/nextspaceflight.com_l328q9n2alm03mdukb05504c44%40group.calendar.google.com/public/basic.ics' \
-  | icsp -c dtstart,summary,location -d ';' \
+  | icsp -c dtstart,summary,location -d $'\t' \
   | tail -n +2 \
   | sort \
-  | column -t -s ';' \
+  | column -t -s $'\t' \
   | less -S
 ```
 </details>
 
-### How to get some .ics files to try it out:
+## How to get some .ics files to try it out:
 
 <details><summary>From Google Calendar</summary>
 
