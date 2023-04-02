@@ -16,7 +16,7 @@ Options:
   -c <string>   Comma seperated list of fields to parse. Order is preserved, case insensitive.
   -d <string>   Delimiter character to use for seperating values. Default: ','
   -h            Show this help text.
-  
+
 Examples:
   # Basic usage
   icsp calendar.ics > calendar.csv

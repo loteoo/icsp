@@ -17,9 +17,26 @@ curl -sSL "https://raw.githubusercontent.com/loteoo/icsp/main/install" | sh
 
 With enough traction on the project, I will publish icsp to common package managers. (feel free to help!)
 
-## Usage examples
+## Usage
 
 Run `icsp -h` for usage.
+
+```
+icsp - iCalendar (.ics) parser. v0.2
+
+Reads an iCalendar stream from stdin (or from a file)
+and outputs a CSV of it's contents to stdout.
+
+Usage:
+  icsp [-h] [-c columns] [-d delimiter] [file ...]
+
+Options:
+  -c <string>   Comma seperated list of fields to parse. Order is preserved, case insensitive.
+  -d <string>   Delimiter character to use for seperating values. Default: ','
+  -h            Show this help text.
+```
+
+Basic examples:
 
 ```sh
 # Basic usage
@@ -32,7 +49,7 @@ icsp -c 'dtstart,summary,duration' -d $'\t' calendar.ics > calendar.tsv
 curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
 ```
 
-#### Advanced command-line example
+Advanced command-line example:
 
 ```sh
 icsp \
@@ -131,7 +148,6 @@ At the same time, they all provide very simple import/export features just a few
 - [Command-Line data manipulation](https://planspace.org/2013/05/21/command-line-data-manipulation/)
 - [CLI data scripting intro](https://compphylo.github.io/Oslo2019/Scripting_CLI_Intro/Scripting_CLI_Intro.html)
 - [Singapore university data manipulation intro](https://nusit.nus.edu.sg/technus/data-manipulation-and-more-with-the-command-line/)
-- [10 useful data commands](https://opensource.com/article/17/2/command-line-tools-data-analysis-linux)
 - [More CLI tools](https://github.com/dbohdan/structured-text-tools)
 
 #### iCalendar:
