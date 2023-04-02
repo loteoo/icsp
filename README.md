@@ -2,7 +2,7 @@
 
 Small, fast and simple command-line tool to convert calendar exports (.ics files) into CSV files for easy analysis and usage in broader use-cases.
 
-Combine this with CSV tools such as [xsv](https://github.com/BurntSushi/xsv), [q](https://github.com/harelba/q) or [csvkit](https://github.com/wireservice/csvkit) for calendar data superpowers.
+Combine this with CSV tools like [xsv](https://github.com/BurntSushi/xsv), [q](https://github.com/harelba/q), [csvkit](https://github.com/wireservice/csvkit) or [visidata](https://github.com/saulpw/visidata) for calendar data superpowers.
 
 Works with a simple stream-in stream-out loop that can handle large files. Hand-written in pure bash.
 
