@@ -28,7 +28,7 @@ Examples:
   icsp -c 'dtstart,summary,duration' -d '|' calendar.ics | column -t -s '|' | less -S
 "
 
-bad_usage="See 'icsp -h' for usage."
+see_usage="See 'icsp -h' for usage."
 
 throw() {
   echo "$@" 1>&2
@@ -49,18 +49,24 @@ while getopts "c:d:x:h" arg; do
     d) delimiter="$OPTARG";;
     x) component="$OPTARG";;
     h) echo "$help"; exit 0;;
-    *) throw "$bad_usage";;
+    *) throw "$see_usage";;
   esac
 done
 
 # Validate that there's stdin OR file path
 shift $((OPTIND - 1))
-if [[ -z ${1+x} && -t 0 ]]; then
-  throw "No stdin or input specified. $bad_usage"
+if [[ -n ${1+x} ]]; then
+  if [[ ! -f "$1" ]]; then
+    throw "File \"$1\" does not exist. $see_usage"
+  fi
+else
+  if [[ -t 0 ]]; then
+    throw "No stdin or file specified. $see_usage"
+  fi
 fi
 
 if [[ -n "${*:2}" ]]; then
-  throw "Input file should be the last argument. $bad_usage"
+  throw "Input file should be the last argument. $see_usage"
 fi
 
 ### Let's roll!
