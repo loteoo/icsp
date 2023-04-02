@@ -32,16 +32,7 @@ icsp -c 'dtstart,summary,duration' -d $'\t' calendar.ics > calendar.tsv
 curl -s https://foobar/path/to/calendar.ics | icsp > calendar.csv
 ```
 
-#### Advanced example
-
-What each line does in order:
-1. Only show the 'dtstart', 'summary' and 'duration' columns, in that order
-1. Use a TAB character as the delemiter (tsv)
-1. Use the calendar.ics file
-1. Filter to June 2022 only
-1. Sort chronologically
-1. Align columns
-1. Display result in scrollable area
+#### Advanced command-line example
 
 ```sh
 icsp \
@@ -53,6 +44,15 @@ icsp \
   | column -t -s $'\t' \
   | less -S
 ```
+
+What each line does in order:
+1. Only show the 'dtstart', 'summary' and 'duration' fields, in that order
+1. Use a TAB character as the delimiter (tsv)
+1. Use the calendar.ics file
+1. Filter to June 2022 only
+1. Sort chronologically
+1. Align columns
+1. Display result in scrollable area
 
 ## Demo commands
 
@@ -98,6 +98,8 @@ curl -s 'https://calendar.google.com/calendar/ical/nextspaceflight.com_l328q9n2a
 ```
 </details>
 
+I like to do these kind of manipulations on the command-line, but remember that you can always load these CSV files in your favorite programming language for maximum power and flexibility.
+
 ## How to get some .ics files to try it out:
 
 <details><summary>From Google Calendar</summary>
@@ -124,6 +126,15 @@ At the same time, they all provide very simple import/export features just a few
 
 ## Reading
 
+#### Working with CSVs on the command-line:
+- [CSVs on the CLI](https://bconnelly.net/posts/working_with_csvs_on_the_command_line/)
+- [Command-Line data manipulation](https://planspace.org/2013/05/21/command-line-data-manipulation/)
+- [CLI data scripting intro](https://compphylo.github.io/Oslo2019/Scripting_CLI_Intro/Scripting_CLI_Intro.html)
+- [Singapore university data manipulation intro](https://nusit.nus.edu.sg/technus/data-manipulation-and-more-with-the-command-line/)
+- [10 useful data commands](https://opensource.com/article/17/2/command-line-tools-data-analysis-linux)
+- [More CLI tools](https://github.com/dbohdan/structured-text-tools)
+
+#### iCalendar:
 - [icalendar.org](https://icalendar.org/) - iCalendar docs & tools
 - [RFC5545](https://datatracker.ietf.org/doc/html/rfc5545) - iCalendar RFC
 
