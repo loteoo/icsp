@@ -6,17 +6,19 @@ USR_BIN_PATH="/usr/local/bin"
 ALT_BIN_PATH="$HOME/bin"
 SCRIPT_TEMP_PATH="$HOME/icsp"
 
-echo "Downloading script from github..."
-curl -s https://raw.githubusercontent.com/loteoo/icsp/main/icsp -o "$SCRIPT_TEMP_PATH"
+# Step 1
+echo "Download script from github..."
+curl -s "https://raw.githubusercontent.com/loteoo/icsp/main/icsp" -o "$SCRIPT_TEMP_PATH"
 
-if [ ! -x "$SCRIPT_TEMP_PATH" ]; then
-  echo "Making script executable..."
-  chmod +x "$SCRIPT_TEMP_PATH"
-fi
+# Step 2
+echo "Make script executable..."
+chmod +x "$SCRIPT_TEMP_PATH"
 
+# Step 3
+echo "Move script to executable path..."
 if [ -d "$USR_BIN_PATH" ]; then
   if [ -w "$USR_BIN_PATH" ]; then
-    echo "Moving to $USR_BIN_PATH"
+    echo "Moving to $USR_BIN_PATH/icsp"
     mv "$SCRIPT_TEMP_PATH" "$USR_BIN_PATH/icsp"
   else
     echo "Moving to $USR_BIN_PATH/icsp (requires sudo)"
@@ -26,17 +28,18 @@ else
   if [ ! -d "$ALT_BIN_PATH" ]; then
     echo "Creating $ALT_BIN_PATH folder..."
     mkdir "$ALT_BIN_PATH"
+    REQUIRES_NEW_PATH="true"
   fi
-  echo "Moving to $ALT_BIN_PATH"
+  echo "Moving to $ALT_BIN_PATH/icsp"
   mv "$SCRIPT_TEMP_PATH" "$ALT_BIN_PATH/icsp"
-  echo "$PATH" | grep -q "$ALT_BIN_PATH" || REQUIRES_NEW_PATH="true"
 fi
 
+# Show next steps
 echo "Done! 🎉"
 echo "Star on github if you like icsp to show support."
-
 if [ "$REQUIRES_NEW_PATH" = "true" ]; then
-  echo "⚠️ Please add $ALT_BIN_PATH to your executable PATH, then restart your terminal to make icsp available."
+  echo "⚠️ Please add $ALT_BIN_PATH to your executable PATH, then restart your terminal to make icsp available. Example: "
+  echo "echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> ~/.bash_profile"
 else
   echo "Run 'icsp -h' to see usage. Enjoy!"
 fi

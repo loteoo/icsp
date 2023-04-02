@@ -8,14 +8,14 @@ Works with a simple stream-in stream-out loop that can handle large files. Hand-
 
 ## Installation
 
-To install the script, place it in your bin path and make sure it's executable, or alternatively, run this install script (bash):
+To install icsp, place the `icsp` script in your executable bin path, or alternatively, use the install script:
 
 ```sh
-# Always check scripts before running them...
-sh <(curl -sSL https://raw.githubusercontent.com/loteoo/icsp/main/install)
+curl -sSL "https://raw.githubusercontent.com/loteoo/icsp/main/install" | sh
 ```
+> (always check scripts before running them...)
 
-With enough traction on the project, I will create proper installers and publish it to common package managers.
+With enough traction on the project, I will publish icsp to common package managers. (feel free to help!)
 
 ## Usage examples
 
@@ -68,8 +68,8 @@ curl -s 'https://calendar.google.com/calendar/ical/ht3jlfaac5lfd6263ulfh4tql8%40
 Space flight launch calendar:
 ```sh
 curl -s 'https://calendar.google.com/calendar/ical/nextspaceflight.com_l328q9n2alm03mdukb05504c44%40group.calendar.google.com/public/basic.ics' \
-  | tail -n +2 \
   | icsp -c dtstart,summary,location -d ';' \
+  | tail -n +2 \
   | sort \
   | column -t -s ';' \
   | less -S
