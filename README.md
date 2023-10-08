@@ -4,8 +4,6 @@ Small, fast and simple command-line tool to convert calendar exports (.ics files
 
 Combine this with CSV tools like [xsv](https://github.com/BurntSushi/xsv), [q](https://github.com/harelba/q), [csvkit](https://github.com/wireservice/csvkit) or [visidata](https://github.com/saulpw/visidata) for calendar data superpowers.
 
-Works with a simple stream-in stream-out loop that can handle large files. Hand-written in pure bash.
-
 ## Installation
 
 To install icsp, place the `icsp` script in your executable bin path, or alternatively, use the install script:
@@ -23,7 +21,7 @@ With enough traction on the project, I will publish icsp to common package manag
 Run `icsp -h` for usage.
 
 ```
-icsp - iCalendar (.ics) parser. v0.2
+icsp - iCalendar (.ics) parser. v0.3
 
 Reads an iCalendar stream from stdin (or from a file)
 and outputs a CSV of it's contents to stdout.
@@ -160,8 +158,8 @@ At the same time, they all provide very simple import/export features just a few
 
 #### iCalendar:
 
-- [icalendar.org](https://icalendar.org/) - iCalendar docs & tools
 - [RFC5545](https://datatracker.ietf.org/doc/html/rfc5545) - iCalendar RFC
+- [icalendar.org](https://icalendar.org/) - iCalendar docs & tools
 
 ---
 

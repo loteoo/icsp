@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
-set -e
-
-version="0.2"
+set -euo pipefail
+IFS=$'\n\t'
+VERSION="0.3.0"
 
 help="
-icsp - iCalendar (.ics) parser. v$version
+icsp - iCalendar (.ics) parser. v$VERSION
 
 Reads an iCalendar stream from stdin (or from a file)
 and outputs a CSV of it's contents to stdout.
 
 Usage:
-  icsp [-h] [-c columns] [-d delimiter] [file ...]
+  icsp [-c columns] [-d delimiter] [-x component] [-hi] [file]
 
 Options:
   -c <string>   Comma seperated list of fields to parse. Order is preserved, case insensitive.
   -d <string>   Delimiter character to use for seperating values. Default: ','
+  -x <string>   ICS component to parse. Default: VEVENT
   -h            Show this help text.
 
 Examples:
@@ -35,26 +36,26 @@ throw() {
   exit 1
 }
 
-### Parse inputs
+### Run icsp
 
-dtcolumns="DTSTART,DTEND,DTSTAMP,CREATED,LAST-MODIFIED"
-columns="DTSTART,DTEND,SUMMARY,DURATION,ORGANIZER,LOCATION,DESCRIPTION,RRULE,STATUS,SEQUENCE,UID,CATEGORIES,URL,CLASS,TRANSP,DTSTAMP,CREATED,LAST-MODIFIED"
+# Default option values
 delimiter=","
+columns=""
 component="VEVENT"
 
 # Parse options
-while getopts "c:d:x:h" arg; do
+while getopts "c:d:x:ih" arg; do
   case $arg in
-    c) columns="$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')";;
+    c) columns="$OPTARG";;
     d) delimiter="$OPTARG";;
     x) component="$OPTARG";;
     h) echo "$help"; exit 0;;
     *) throw "$see_usage";;
   esac
 done
-
-# Validate that there's stdin OR file path
 shift $((OPTIND - 1))
+
+# Validate that there's stdin OR valid file path
 if [[ -n ${1+x} ]]; then
   if [[ ! -f "$1" ]]; then
     throw "File \"$1\" does not exist. $see_usage"
@@ -65,111 +66,22 @@ else
   fi
 fi
 
-if [[ -n "${*:2}" ]]; then
-  throw "Input file should be the last argument. $see_usage"
-fi
-
-### Let's roll!
-
-# Loop state
-is_in_event="false"
-
-get-var-key() {
-  echo "${component}_$(echo "$1" | tr '-' '_')"
-}
-
-iso-datetime() {
-  if [[ $1 = *T* ]]; then
-    dt="${1:0:4}-${1:4:2}-${1:6:2} ${1:9:2}:${1:11:2}:${1:13:2}"
-  else
-    dt="${1:0:4}-${1:4:2}-${1:6:2} 00:00:00"
-  fi
-  echo "$dt"
-}
-
-to-epoch() {
-  if date --version >/dev/null 2>&1 ; then
-    date -d "$1" +%s
-  else
-    date -j -f '%Y-%m-%d %H:%M:%S' "$1" +%s
-  fi
-}
-
-get-duration() {
-  seconds=$(( $(to-epoch "$2") - $(to-epoch "$1") ))
-  hours=$(awk "BEGIN{print $seconds / 3600}")
-  if [[ "$hours" == *"."* ]]; then
-    decimals="${hours#*.}"
-    minutes=$(awk "BEGIN{print 0.$decimals * 60}")
-    hour="${hours%.*}"
-    if [[ "$hour" == "0" ]]; then
-      echo "${minutes}m"
-    else
-      echo "${hour}h${minutes}m"
-    fi
-  else
-    echo "${hours}h"
-  fi
-}
-
-handle-line() {
-  raw_key="${1%%:*}"
-  raw_value="${1#*:}"
-  key="${raw_key%%;*}"
-  value="${raw_value//\\,/,}"
-
-  if [[ "$key" == "BEGIN" && "$value" == "$component" ]]; then
-    is_in_event="true"
-    return
-  fi
-
-  if [[ "$is_in_event" == "true" && "DTSTART,DTEND,$columns" == *"$key"* ]]; then
-    vkey="$(get-var-key "$key")"
-    eval "$vkey=\"\$value\"";
-  fi
-  
-  if [[ "$key" == "END" && "$value" == "$component" ]]; then
-    is_in_event="false"
-    row=""
-    for col in ${columns//,/ }; do
-      vstartkey="$(get-var-key "DTSTART")"
-      vendkey="$(get-var-key "DTEND")"
-      if [[ "$col" == "DURATION" && -n "${!vstartkey}" && -n "${!vendkey}" ]]; then
-        dtstart="$(iso-datetime "${!vstartkey}")"
-        dtend="$(iso-datetime "${!vendkey}")"
-        cached_value="$(get-duration "$dtstart" "$dtend")"
-      else
-        vkey="$(get-var-key "$col")"
-        cached_value="${!vkey}"
-      fi
-
-      if [[ "$dtcolumns" == *"$col"* && -n "$cached_value" ]]; then
-        cached_value="$(iso-datetime "$cached_value")"
-      fi
-
-      if [[ "$cached_value" == *"$delimiter"* ]]; then
-        escaped_value="\"${cached_value//\"/\"\"}\""
-      else
-        escaped_value="$cached_value"
-      fi
-      row="${row}${delimiter}${escaped_value}"
-    done
-    echo "${row:1}"
-    return
-  fi
-
-}
-
-echo "$columns" | tr '[:upper:]' '[:lower:]' | tr ',' "$delimiter" 
-
-wip_line=""
-while IFS= read -r raw_line; do
-  if [[ "$raw_line" == " "* ]]; then
-    no_space="${raw_line## }"
-    wip_line="$wip_line${no_space//$'\r'}"
-  else
-    handle-line "$wip_line"
-    wip_line="${raw_line//$'\r'}"
-  fi
-done < <(cat $1)
-handle-line "$wip_line"
+### ICS to CSV
+# Read file or STDIN
+# Then collapse multi-line fields using awk
+# Then create a TSV of key:value ics fields
+# Then cleanup keys that have extra data after a ";" character
+# Then remove DOS carriage characters
+# Then remove comma-escaping backslash characters
+# Then convert the cleaned up ICS file to a CSV string using ics-to-csv.awk
+cat ${1:-} \
+  | awk -v RS= '{gsub(/\r\n[[:blank:]]/,"")}1' \
+  | sed 's/:/\t/' \
+  | sed 's/;.*\t/\t/' \
+  | tr -d $'\r' \
+  | sed 's/\\,/,/g' \
+  | awk \
+    -v OFS="$delimiter" \
+    -v columns="$columns" \
+    -v component="$component" \
+    -f ./ics-to-csv.awk
