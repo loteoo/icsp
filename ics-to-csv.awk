@@ -1,38 +1,74 @@
-function to_iso(dt) {
-  format = ""
-  if (dt ~ /^[0-9]{8}$/) {
-    format = "%Y%m%d"
-  } else if (dt ~ /^[0-9]{8}T[0-9]{6}$/) {
-    format = "%Y%m%dT%H%M%S"
-  } else if (dt ~ /^[0-9]{8}T[0-9]{6}Z$/) {
-    format = "%Y%m%dT%H%M%SZ"
-  }
-  if (format != "") {
-    date_command = "date -jf '" format "' -v '" tz_offset "M' '" dt "' '+%Y-%m-%d %H:%M:%S'"
-    date_command | getline out
-    close(date_command)
-    return out
-  }
-  return dt
-}
-
-function to_epoch(dt) {
-  if (dt ~ /^[0-9]{8}$/) {
-    format = "%Y%m%d"
-  } else if (dt ~ /^[0-9]{8}T[0-9]{6}$/) {
-    format = "%Y%m%dT%H%M%S"
-  } else if (dt ~ /^[0-9]{8}T[0-9]{6}Z$/) {
-    format = "%Y%m%dT%H%M%SZ"
-  }
-  date_command = "date -jf '" format "' '" dt "' '+%s'"
-  date_command | getline out
-  close(date_command)
+function run_cmd(cmd) {
+  cmd | getline out
+  close(cmd)
   return out
 }
 
+function get_dt_type(dt) {
+  date_part = substr(dt, 1, 8)
+  T_part = substr(dt, 9, 1)
+  time_part = substr(dt, 10, 6)
+  Z_part = substr(dt, 16, 1)
+  if (length(dt) == 8 && date_part !~ /[^0-9]/) {
+    return "date"
+  }
+  if (length(dt) == 15 && date_part !~ /[^0-9]/ && T_part == "T" && time_part !~ /[^0-9]/) {
+    return "datetime"
+  }
+  if (length(dt) == 16 && date_part !~ /[^0-9]/ && T_part == "T" && time_part !~ /[^0-9]/ && Z_part == "Z" ) {
+    return "utc datetime"
+  }
+}
+
+function to_iso(dt) {
+  dt_type = get_dt_type(dt)
+  if (dt_type == "date") {
+    Y = substr(dt, 1, 4)
+    M = substr(dt, 5, 2)
+    D = substr(dt, 7, 2)
+    return Y "-" M "-" D
+  } else if (dt_type == "datetime") {
+    Y = substr(dt, 1, 4)
+    M = substr(dt, 5, 2)
+    D = substr(dt, 7, 2)
+    h = substr(dt, 10, 2)
+    m = substr(dt, 12, 2)
+    s = substr(dt, 14, 2)
+    return Y "-" M "-" D " " h ":" m ":" s
+  } else if (dt_type == "utc datetime") {
+    Y = substr(dt, 1, 4)
+    M = substr(dt, 5, 2)
+    D = substr(dt, 7, 2)
+    h = substr(dt, 10, 2)
+    m = substr(dt, 12, 2)
+    s = substr(dt, 14, 2)
+    return Y "-" M "-" D " " h ":" m ":" s "Z"
+  }
+  print "Unrecognized format: " dt
+}
+
+function get_iso_format(iso_dt) {
+  format = "%Y-%m-%d %H:%M:%SZ"
+  if (length(iso_dt) == 19) {
+    format = "%Y-%m-%d %H:%M:%S"
+  } else if (length(iso_dt) == 10) {
+    format = "%Y-%m-%d"
+  }
+  return format
+}
+
+function dt_format_local(dt, output_format) {
+  iso_dt = to_iso(dt)
+  date_command = "date -d '" iso_dt "' '" output_format "'"
+  if (date_cmd_type == "bsd") {
+    date_command = "date -jf '" get_iso_format(iso_dt) "' -v '" tz_offset "M' '" iso_dt "' '" output_format "'"
+  }
+  return run_cmd(date_command)
+}
+
 function get_duration(dtstart, dtend) {
-  start = to_epoch(dtstart)
-  end = to_epoch(dtend)
+  start = dt_format_local(dtstart, "+%s")
+  end = dt_format_local(dtend, "+%s")
   seconds = end - start
   hours = seconds / 3600
   decimal_index = index(hours, ".")
@@ -41,13 +77,7 @@ function get_duration(dtstart, dtend) {
   }
   decimals = substr(hours, decimal_index + 1, length(hours))
   hour = substr(hours, 0, decimal_index - 1)
-  minutes_precise = ("0." decimals) * 60
-  minutes_decimal_index = index(minutes_precise, ".")
-  if (minutes_decimal_index != "0") {
-    minutes = substr(minutes_precise, 0, minutes_decimal_index - 1)
-  } else {
-    minutes = minutes_precise
-  }
+  minutes = int(("0." decimals) * 60)
   if (hour == "0") {
     return minutes "m"
   }
@@ -65,8 +95,12 @@ function get_date_cmd_type() {
   return date_cmd_type
 }
 
-function get_tz_offset() {
-  check_tz_offset = "date +%z"
+function get_tz_offset(tzid) {
+  tzid_prefix = ""
+  if (tzid != "") {
+    tzid_prefix = "TZ=" tzid " "
+  }
+  check_tz_offset = tzid_prefix "date +%z"
   check_tz_offset | getline tz_offset_str
   close(check_tz_offset)
   tz_d = substr(tz_offset_str, 1, 1)
@@ -83,7 +117,7 @@ BEGIN {
   OFS = "\t" # "OFS" is also a tab character because we want to simplify processing later or
   # using a unique delimiter character that won't be found in the values.
 
-  # "columns" variable is set by icsp via the "-c".
+  # "columns" variable is set by icsp via the "-c" option.
   # Default: "" (empty string)
   # It represents which fields of the .ics object we want to include in the CSV output.
 
@@ -92,14 +126,18 @@ BEGIN {
   # Default: "VEVENT"
   # Other possible values: "VTODO", "VJOURNAL" "VFREEBUSY" "VTIMEZONE" "VALARM"
 
-  iso_format = "true"
-  compute_duration = "true"
+  # "iso_format" variable is set by icsp via the "-i" option.
 
   idx = 0 # Current object "index", counts up to the total number of rows.
   in_component = 0 # Whether or not the current line is within the specified component
 
   date_cmd_type = get_date_cmd_type()
   tz_offset = get_tz_offset()
+}
+
+# Register calendar's timezone
+idx == 0 && $1 ~ /TZID|TIMEZONE/ {
+  tz_offset = get_tz_offset($2)
 }
 
 # Update "in_component" and "idx" accordingly for each line
@@ -165,7 +203,7 @@ END {
   for (i = 0; i < idx; i++) {
     line_out = ""
 
-    if (compute_duration == "true") {
+    if (headers ~ /DURATION/ && values[i, "DURATION"] == "" && values[i, "DTSTART"] != "" && values[i, "DTEND"] != "") {
       values[i, "DURATION"] = get_duration(values[i, "DTSTART"], values[i, "DTEND"])
     }
 
@@ -174,8 +212,13 @@ END {
       column = cols_array[k]
       value = values[i, column]
 
-      if (iso_format == "true") {
-        value = to_iso(value)
+      dt_type = get_dt_type(value)
+      if (iso_format == "true" && dt_type != "") {
+        if (dt_type == "utc datetime") {
+          value = dt_format_local(value, "+%Y-%m-%d %H:%M:%S")
+        } else {
+          value = to_iso(value)
+        }
       }
 
       # Escape value if necessary

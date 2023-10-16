@@ -16,6 +16,7 @@ Options:
   -c <string>   Comma seperated list of fields to parse. Order is preserved, case insensitive.
   -d <string>   Delimiter character to use for seperating values. Default: ','
   -x <string>   ICS component to parse. Default: VEVENT
+  -i            Format standard datetime columns to ISO format
   -h            Show this help text.
 
 Examples:
@@ -39,16 +40,17 @@ throw() {
 ### Run icsp
 
 # Default option values
-delimiter=","
 columns=""
+delimiter=","
 component="VEVENT"
 
 # Parse options
 while getopts "c:d:x:ih" arg; do
   case $arg in
-    c) columns="$OPTARG";;
+    c) columns="$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')";;
     d) delimiter="$OPTARG";;
     x) component="$OPTARG";;
+    i) iso_format="true";;
     h) echo "$help"; exit 0;;
     *) throw "$see_usage";;
   esac
@@ -84,4 +86,5 @@ cat ${1:-} \
     -v OFS="$delimiter" \
     -v columns="$columns" \
     -v component="$component" \
+    -v iso_format="${iso_format:-}" \
     -f ./ics-to-csv.awk
