@@ -114,8 +114,7 @@ BEGIN {
   FS = "\t" # FS is a tab character because we expect a special ICS file that uses
   # tab characters as the delimiter for key-value pairs.
 
-  OFS = "\t" # "OFS" is also a tab character because we want to simplify processing later or
-  # using a unique delimiter character that won't be found in the values.
+  # "OFS" variable is set by icsp via the "-d" option.
 
   # "columns" variable is set by icsp via the "-c" option.
   # Default: "" (empty string)
@@ -160,7 +159,7 @@ $1 == "END" {
 }
 
 # Pick up relevant values as we go through the file
-in_component == 1 {
+in_component == 1 && $1 != "" && $2 != "" {
   found_cols[$1] = found_cols[$1] + 1
   values[idx, $1] = $2
 }
@@ -201,7 +200,7 @@ END {
 
   # Loop rows
   for (i = 0; i < idx; i++) {
-    line_out = ""
+    line_out = "\0"
 
     if (headers ~ /DURATION/ && values[i, "DURATION"] == "" && values[i, "DTSTART"] != "" && values[i, "DTEND"] != "") {
       values[i, "DURATION"] = get_duration(values[i, "DTSTART"], values[i, "DTEND"])
@@ -228,14 +227,16 @@ END {
       }
 
       # Concatenate output line
-      if (line_out == "") {
-        line_out = value
+      if (line_out == "\0") {
+        line_out = value 
       } else {
         line_out = line_out OFS value
       }
     }
 
     # Print row
-    print line_out
+    if (line_out != "\0") {
+      print line_out
+    }
   }
 }

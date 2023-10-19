@@ -75,6 +75,7 @@ fi
 # Then cleanup keys that have extra data after a ";" character
 # Then remove DOS carriage characters
 # Then remove comma-escaping backslash characters
+# Then remove semicolon-escaping backslash characters
 # Then convert the cleaned up ICS file to a CSV string using ics-to-csv.awk
 cat ${1:-} \
   | awk -v RS= '{gsub(/\r\n[[:blank:]]/,"")}1' \
@@ -82,6 +83,7 @@ cat ${1:-} \
   | sed 's/;.*\t/\t/' \
   | tr -d $'\r' \
   | sed 's/\\,/,/g' \
+  | sed 's/\\;/;/g' \
   | awk \
     -v OFS="$delimiter" \
     -v columns="$columns" \
