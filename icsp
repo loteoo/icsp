@@ -2,6 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 VERSION="0.3.0"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 help="
 icsp - iCalendar (.ics) parser. v$VERSION
@@ -17,6 +18,7 @@ Options:
   -d <string>   Delimiter character to use for seperating values. Default: ','
   -x <string>   ICS component to parse. Default: VEVENT
   -i            Format standard datetime columns to ISO format
+  -r            Reverse conversion. CSV to ICS
   -h            Show this help text.
 
 Examples:
@@ -37,20 +39,22 @@ throw() {
   exit 1
 }
 
-### Run icsp
+# Run icsp
+# ============
 
 # Default option values
 columns=""
-delimiter=","
+delimiter=$'\t'
 component="VEVENT"
 
 # Parse options
-while getopts "c:d:x:ih" arg; do
+while getopts "c:d:x:irh" arg; do
   case $arg in
     c) columns="$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')";;
     d) delimiter="$OPTARG";;
     x) component="$OPTARG";;
     i) iso_format="true";;
+    r) reverse="true";;
     h) echo "$help"; exit 0;;
     *) throw "$see_usage";;
   esac
@@ -68,25 +72,29 @@ else
   fi
 fi
 
-### ICS to CSV
-# Read file or STDIN
-# Then collapse multi-line fields using awk
-# Then create a TSV of key:value ics fields
-# Then cleanup keys that have extra data after a ";" character
-# Then remove DOS carriage characters
-# Then remove comma-escaping backslash characters
-# Then remove semicolon-escaping backslash characters
-# Then convert the cleaned up ICS file to a CSV string using ics-to-csv.awk
-cat ${1:-} \
-  | awk -v RS= '{gsub(/\r\n[[:blank:]]/,"")}1' \
-  | sed 's/:/\t/' \
-  | sed 's/;.*\t/\t/' \
-  | tr -d $'\r' \
-  | sed 's/\\,/,/g' \
-  | sed 's/\\;/;/g' \
-  | awk \
-    -v OFS="$delimiter" \
-    -v columns="$columns" \
-    -v component="$component" \
-    -v iso_format="${iso_format:-}" \
-    -f ./ics-to-csv.awk
+if [[ -z "${reverse:-}" ]]; then
+  ### ICS to CSV
+  # Read file or STDIN
+  # Then collapse multi-line fields using awk
+  # Then create a TSV of key:value ics fields
+  # Then cleanup keys that have extra data after a ";" character
+  # Then remove DOS carriage characters
+  # Then convert the cleaned up ICS file to a CSV string using ics-to-csv.awk
+  cat ${1:-} \
+    | awk -v RS= '{gsub(/\r\n[[:blank:]]/,"")}1' \
+    | sed 's/:/\t/' \
+    | sed 's/;.*\t/\t/' \
+    | tr -d $'\r' \
+    | awk \
+      -v OFS="$delimiter" \
+      -v columns="$columns" \
+      -v component="$component" \
+      -v iso_format="${iso_format:-}" \
+      -f "$SCRIPT_DIR/ics-to-csv.awk"
+else
+  cat ${1:-} \
+    | awk \
+      -v FS="$delimiter" \
+      -v iso_format="${iso_format:-}" \
+      -f "$SCRIPT_DIR/csv-to-ics.awk"
+fi
