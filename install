@@ -1,45 +1,142 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+# shellcheck disable=SC2145
+set -euo pipefail
+IFS=$'\n\t'
+normal=$'\e[0m'
+bold=$'\e[1m'
+dimmed=$'\e[2m'
+red=$'\e[31m'
+green=$'\e[92m'
+cyan=$'\e[96m'
 
-REQUIRES_NEW_PATH="false"
-USR_BIN_PATH="/usr/local/bin"
-ALT_BIN_PATH="$HOME/bin"
-SCRIPT_TEMP_PATH="$HOME/icsp"
+log() {
+  echo "$@" 1>&2
+}
 
-# Step 1
-echo "Download script from github..."
-curl -s "https://raw.githubusercontent.com/loteoo/icsp/main/icsp" -o "$SCRIPT_TEMP_PATH"
+info() {
+  log "${dimmed}==> $@${normal}"
+}
 
-# Step 2
-echo "Make script executable..."
-chmod +x "$SCRIPT_TEMP_PATH"
+success() {
+  log "${cyan}✓ $@${normal}"
+}
 
-# Step 3
-echo "Move script to executable path..."
-if [ -d "$USR_BIN_PATH" ]; then
-  if [ -w "$USR_BIN_PATH" ]; then
-    echo "Moving to $USR_BIN_PATH/icsp"
-    mv "$SCRIPT_TEMP_PATH" "$USR_BIN_PATH/icsp"
-  else
-    echo "Moving to $USR_BIN_PATH/icsp (requires sudo)"
-    sudo mv "$SCRIPT_TEMP_PATH" "$USR_BIN_PATH/icsp"
+throw() {
+  log " ${red}Error: $@${normal}"
+  exit 1
+}
+
+yn() {
+  # shellcheck disable=SC2064
+  trap "echo $normal" EXIT
+  read -r -n 1 -p "${green}${bold}?${normal} $1 [y/n]: ${cyan}${bold}" yn
+  echo "${normal}"
+  trap - EXIT
+  if [[ "$yn" != [Yy]* ]]; then
+    return 1
   fi
-else
-  if [ ! -d "$ALT_BIN_PATH" ]; then
-    echo "Creating $ALT_BIN_PATH folder..."
-    mkdir "$ALT_BIN_PATH"
-    REQUIRES_NEW_PATH="true"
+}
+
+# ==========================
+# Install icsp
+# ==========================
+REPO_ZIP_DOWNLOAD_URL="https://github.com/loteoo/icsp/archive/refs/heads/main.zip"
+BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"
+SCRIPT_NAME="icsp"
+INSTALL_PATH="$BIN_HOME/$SCRIPT_NAME-main"
+SCRIPT_FILE_PATH="$INSTALL_PATH/$SCRIPT_NAME"
+SYMLINK_PATH="$BIN_HOME/$SCRIPT_NAME"
+
+
+## Validation steps
+## ==================
+
+# Validate dependencies
+for dependency in curl unzip awk date sed tr; do
+  if ! command -v $dependency &> /dev/null; then
+    throw "\"$dependency\" command is not available. Installation aborted."
   fi
-  echo "Moving to $ALT_BIN_PATH/icsp"
-  mv "$SCRIPT_TEMP_PATH" "$ALT_BIN_PATH/icsp"
+done
+
+# Warn reinstall if already installed
+if  [[ -f "$SYMLINK_PATH" || -d "$INSTALL_PATH" || -n "$(which $SCRIPT_NAME)" ]]; then
+  if ! yn "$SCRIPT_NAME already exists. Uninstall before reinstall?"; then
+    throw "Installation aborted."
+  fi
+  if [[ -f "$SYMLINK_PATH" ]]; then
+    info "Remove symlink..."
+    rm "$SYMLINK_PATH"
+  fi
+  if [[ -d "$INSTALL_PATH" ]]; then
+    info "Remove script files..."
+    rm -r "$INSTALL_PATH"
+  fi
+  if [[ -n "$(which $SCRIPT_NAME)" ]]; then
+    info "Remove previous installation..."
+    rm "$(which $SCRIPT_NAME)"
+  fi
+  success "Uninstalled $SCRIPT_NAME."
 fi
 
-# Show next steps
-echo "Done! 🎉"
-echo "Star on github if you like icsp to show support."
-if [ "$REQUIRES_NEW_PATH" = "true" ]; then
-  echo "⚠️ Please add $ALT_BIN_PATH to your executable PATH, then restart your terminal to make icsp available. Example: "
-  echo "echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> ~/.bash_profile"
-else
-  echo "Run 'icsp -h' to see usage. Enjoy!"
+# Confirm install
+if ! yn "Install $SCRIPT_NAME?"; then
+  throw "Installation aborted."
 fi
+
+# Create bin directory if needed.
+if [[ ! -d "$BIN_HOME" ]]; then
+  if ! yn "Create \"$BIN_HOME\" directory?"; then
+    throw "Installation aborted."
+  fi
+
+  info "Create \"$BIN_HOME\"..."
+  mkdir -p "$BIN_HOME"
+
+  # Add to bin directory to $PATH if needed.
+  if ! echo "$PATH" | tr ':' $'\n' | grep -q "$BIN_HOME"; then
+    profile_file=".bashrc"
+    if [[ -f "$HOME/.zshrc" ]]; then
+      profile_file=".zshrc"
+    fi
+    if ! yn "\"$BIN_HOME\" is not in \$PATH. Add to path via $profile_file?"; then
+      throw "Installation aborted."
+    fi
+    bash -c "echo 'export PATH=\$PATH:$BIN_HOME' >> $HOME/$profile_file"
+    info "\"$BIN_HOME\" was added to \$PATH. Shell session restart required."
+  fi
+  success "Created \"$BIN_HOME\" directory."
+fi
+
+
+## Install steps
+## ==================
+
+info "Downloading $REPO_ZIP_DOWNLOAD_URL..."
+curl -fsSL "$REPO_ZIP_DOWNLOAD_URL" -o "$INSTALL_PATH.zip"
+
+info "Unpacking to $INSTALL_PATH..."
+unzip -q "$INSTALL_PATH.zip" -d "$BIN_HOME"
+
+info "Delete archive..."
+rm "$INSTALL_PATH.zip"
+
+info "Make script executable..."
+chmod +x "$SCRIPT_FILE_PATH"
+
+info "Create symbolic link at $SYMLINK_PATH..."
+ln -s "$SCRIPT_FILE_PATH" "$SYMLINK_PATH"
+
+
+## Post-install
+## ==================
+
+success "$SCRIPT_NAME installed! 🎉"
+log "Give $SCRIPT_NAME it a star on Github if you like it! 🙏"
+
+if [[ -z "$(which "$SCRIPT_NAME")" ]]; then
+  log "Please restart your terminal to make $SCRIPT_NAME available."
+  exit
+fi
+
+info "Running \"$SCRIPT_NAME -h\"..."
+eval "$SCRIPT_NAME -h"
