@@ -111,21 +111,22 @@ function get_tz_offset(tzid) {
 }
 
 BEGIN {
-  FS = "\t" # FS is a tab character because we expect a special ICS file that uses
-  # tab characters as the delimiter for key-value pairs.
+  FS = "\t" # FS is a tab character because we expect a pre-formatted 
+  # ICS stream that uses tab characters as the delimiter for key-value pairs.
 
   # "OFS" variable is set by icsp via the "-d" option.
 
   # "columns" variable is set by icsp via the "-c" option.
-  # Default: "" (empty string)
-  # It represents which fields of the .ics object we want to include in the CSV output.
+  # It represents which fields of the iCalendar object we want to include in the output.
+  # Default: "" (empty string means all fields)
 
   # "component" variable is set by icsp via the "-x" option.
-  # It represents the .ics object we want to parse.
+  # It represents which iCalendar object we want to parse.
   # Default: "VEVENT"
   # Other possible values: "VTODO", "VJOURNAL" "VFREEBUSY" "VTIMEZONE" "VALARM"
 
-  # "iso_format" variable is set by icsp via the "-i" option.
+  # "no_iso" variable is set by icsp via the "-n" option.
+  # Disables ISO conversion via "date" command. Faster processing but inconvenient format
 
   idx = 0 # Current object "index", counts up to the total number of rows.
   in_component = 0 # Whether or not the current line is within the specified component
@@ -166,7 +167,7 @@ in_component == 1 && $1 != "" && $2 != "" {
 
 END {
   # If no columns were specified, create a list of columns 
-  # sorted by how often they had a value in the CSV file.
+  # sorted by how often they had a value in the file.
   if (columns == "") {
     unsorted_columns=""
     for (col in found_cols) {
@@ -202,7 +203,7 @@ END {
   for (i = 0; i < idx; i++) {
     line_out = "\0"
 
-    if (headers ~ /DURATION/ && values[i, "DURATION"] == "" && values[i, "DTSTART"] != "" && values[i, "DTEND"] != "") {
+    if (no_iso == "" && headers ~ /DURATION/ && values[i, "DURATION"] == "" && values[i, "DTSTART"] != "" && values[i, "DTEND"] != "") {
       values[i, "DURATION"] = get_duration(values[i, "DTSTART"], values[i, "DTEND"])
     }
 
@@ -211,12 +212,14 @@ END {
       column = cols_array[k]
       value = values[i, column]
 
-      dt_type = get_dt_type(value)
-      if (iso_format == "true" && dt_type != "") {
-        if (dt_type == "utc datetime") {
-          value = dt_format_local(value, "+%Y-%m-%d %H:%M:%S")
-        } else {
-          value = to_iso(value)
+      if (no_iso == "" && column ~ /DTSTART|DTEND|DTSTAMP|CREATED|LAST-MOD/) {
+        dt_type = get_dt_type(value)
+        if (dt_type != "") {
+          if (dt_type == "utc datetime") {
+            value = dt_format_local(value, "+%Y-%m-%d %H:%M:%S")
+          } else {
+            value = to_iso(value)
+          }
         }
       }
 
