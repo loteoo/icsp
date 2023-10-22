@@ -1,6 +1,6 @@
 # icsp - iCalendar (.ics) parser
 
-Small, fast and simple command-line tool to convert calendar exports (.ics files) into CSV files for easy analysis and usage in broader use-cases
+Small, fast and simple command-line tool to convert calendar exports (.ics files) into TSV/CSV files for easy analysis and usage in broader use-cases
 
 Combine this with CSV tools like [xsv](https://github.com/BurntSushi/xsv), [q](https://github.com/harelba/q), [csvkit](https://github.com/wireservice/csvkit) or [visidata](https://github.com/saulpw/visidata) for calendar data superpowers.
 
@@ -8,14 +8,27 @@ Written in pure bash and AWK. Compatible with most unix systems (ubuntu, macOS o
 
 ## Installation
 
-To install icsp, place the `icsp` script in your executable bin path, or alternatively, use the install script:
+To install icsp, you can use the install script:
 
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/loteoo/icsp/main/install" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/loteoo/icsp/main/install")
 ```
 
-> (always check scripts before running them...)
+<details><summary>Or, do a manual installation (click to expand):</summary>
 
+1. Download the repo (via git clone or .zip download) and keep it somewhere
+2. Create a symlink from an executable BIN directory (such as /usr/local/bin, ~/.local/bin or ~/bin) to the `icsp` file in the directory that you downloaded.
+
+Example:
+```sh
+#         This bin directory should be in your executable $PATH
+#                                     /
+ln -s ~/my-repos/icsp/icsp ~/.local/bin/icsp
+#                       \
+#     This should be the actual icsp script file
+```
+
+</details>
 
 ## Usage
 
@@ -57,26 +70,22 @@ curl https://foobar/path/to/calendar.ics | icsp > calendar.tsv
 icsp -r calendar.tsv > calendar.ics
 ```
 
-## How to get some .ics files to try it out:
+#### Usage notes:
 
-<details><summary>From Google Calendar</summary>
+For the `-c` option, if you don't specify it, icsp will return all fields found in the .ics file, sorted by how often they are populated. This is useful to quickly check what's in a file, but it is also usually pretty messy, so specifying the wanted columns and their order is probably recommended.
 
-<img src="https://user-images.githubusercontent.com/14101189/227659925-cbc204bc-95e0-4bf6-be2e-686ed1fd815f.png" width="320" alt="Step 1" />
+There is also a special `duration` column you can specify via `-c` that will be computed by icsp (unless already supplied by the iCalendar file). This is often useful because calendar providers usually don't provide this value directly even if it's really useful for viewing the calendar data.
 
-<img src="https://user-images.githubusercontent.com/14101189/227659927-93e7b7f7-0534-45f9-8e77-c0ef242dd567.png" width="720" alt="Step 2" />
-</details>
+The default delimiter for the `-d` option is a TAB character (TSV), instead of a comma (CSV), because tab delimited files have a much better chance of not needing to escape the field delimiter within the values, which makes it more likely to be command-line friendly by default.
 
-<details><summary>From Outlook</summary>
+The `-x` option lets you parse iCalendar objects other than events if needed. The default value is "VEVENT" for events, but other values could be, for example: "VTODO", "VJOURNAL" "VFREEBUSY" "VTIMEZONE" "VALARM".
 
-<img src="https://user-images.githubusercontent.com/14101189/227634762-6229a640-654f-4b2a-8ab5-6acbf4ab7524.png" width="320" alt="Step 2" />
+The `-n` option skips external calls to the `date` command which makes the processing much faster and might avoid issues if you don't have a normal `date` command available on your system. Downside is: no ISO timestamps, and no DURATION computation.
 
-<img src="https://user-images.githubusercontent.com/14101189/227635163-3136bc60-656e-42e1-b0f9-87c67a6c85ac.png" width="720" alt="Step 2" />
-
-<img src="https://user-images.githubusercontent.com/14101189/227633645-d9fa440e-5380-42c7-bf5d-72dc816f7021.png" width="280" alt="Step 3" />
-</details>
+The `-r` option is for creating ics files from tabular files, because why not! This will also take care of converting the ISO timestamps back into the iCalendar format if necessary. This is somewhat of a "experimental" feature right now, since there's a lot of options that this could open the door to that we don't support. For now it just creates a bare-bones, minimal ics file with zero metadata.
 
 
-#### Advanced examples
+## Advanced examples
 
 ```sh
 icsp -c 'dtstart,summary,duration' calendar.ics \
@@ -151,6 +160,24 @@ curl -s 'https://calendar.google.com/calendar/ical/nextspaceflight.com_l328q9n2a
 
 I like to do these kind of manipulations on the command-line, but remember that you can always load these TSV/CSV files in your favorite programming language for maximum power and flexibility.
 
+## How to get some .ics files to try it out:
+
+<details><summary>From Google Calendar</summary>
+
+<img src="https://user-images.githubusercontent.com/14101189/227659925-cbc204bc-95e0-4bf6-be2e-686ed1fd815f.png" width="320" alt="Step 1" />
+
+<img src="https://user-images.githubusercontent.com/14101189/227659927-93e7b7f7-0534-45f9-8e77-c0ef242dd567.png" width="720" alt="Step 2" />
+</details>
+
+<details><summary>From Outlook</summary>
+
+<img src="https://user-images.githubusercontent.com/14101189/227634762-6229a640-654f-4b2a-8ab5-6acbf4ab7524.png" width="320" alt="Step 2" />
+
+<img src="https://user-images.githubusercontent.com/14101189/227635163-3136bc60-656e-42e1-b0f9-87c67a6c85ac.png" width="720" alt="Step 2" />
+
+<img src="https://user-images.githubusercontent.com/14101189/227633645-d9fa440e-5380-42c7-bf5d-72dc816f7021.png" width="280" alt="Step 3" />
+</details>
+
 
 ## Motivation
 
@@ -165,7 +192,7 @@ At the same time, they all provide very simple import/export features just a few
 - [RFC5545](https://datatracker.ietf.org/doc/html/rfc5545) - iCalendar RFC
 - [icalendar.org](https://icalendar.org/) - iCalendar docs & tools
 
-#### Working with CSVs on the command-line:
+#### Working with tabular data on the command-line:
 
 - [CSVs on the CLI](https://bconnelly.net/posts/working_with_csvs_on_the_command_line/)
 - [Command-Line data manipulation](https://planspace.org/2013/05/21/command-line-data-manipulation/)

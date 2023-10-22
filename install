@@ -28,10 +28,10 @@ throw() {
 
 yn() {
   # shellcheck disable=SC2064
-  trap "echo $normal" EXIT
+  trap "echo $normal" SIGINT
   read -r -n 1 -p "${green}${bold}?${normal} $1 [y/n]: ${cyan}${bold}" yn
   echo "${normal}"
-  trap - EXIT
+  trap - SIGINT
   if [[ "$yn" != [Yy]* ]]; then
     return 1
   fi
