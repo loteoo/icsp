@@ -1,4 +1,8 @@
-# icsp - iCalendar (.ics) parser
+<a href="https://millisecond.studio/">
+  <img src="https://cdn.thumbsmith.com/v1/u/loteoo/millisecond-github-banner.png?title=icsp+-+iCalendar+(.ics)+parser&description=Command-line+iCalendar+(.ics)+to+TSV+%2F+CSV+utility.+Written+in+Bash+%2B+AWK" alt="icsp banner" />
+</a>
+
+---
 
 Small, fast and simple command-line tool to convert calendar exports (.ics files) into TSV/CSV files for easy analysis and usage in broader use-cases
 
@@ -20,6 +24,7 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/loteoo/icsp/main/install")
 2. Create a symlink from an executable BIN directory (such as /usr/local/bin, ~/.local/bin or ~/bin) to the `icsp` file in the directory that you downloaded.
 
 Example:
+
 ```sh
 #         This bin directory should be in your executable $PATH
 #                                     /
@@ -83,7 +88,6 @@ The `-x` option lets you parse iCalendar objects other than events if needed. Th
 The `-n` option skips external calls to the `date` command which makes the processing much faster and might avoid issues if you don't have a normal `date` command available on your system. Downside is: no ISO timestamps, and no DURATION computation.
 
 The `-r` option is for creating ics files from tabular files, because why not! This will also take care of converting the ISO timestamps back into the iCalendar format if necessary. This is somewhat of a "experimental" feature right now, since there's a lot of options that this could open the door to that we don't support. For now it just creates a bare-bones, minimal ics file with zero metadata.
-
 
 ## Advanced examples
 
@@ -178,7 +182,6 @@ I like to do these kind of manipulations on the command-line, but remember that 
 <img src="https://user-images.githubusercontent.com/14101189/227633645-d9fa440e-5380-42c7-bf5d-72dc816f7021.png" width="280" alt="Step 3" />
 </details>
 
-
 ## Motivation
 
 While common calendar software (Google, outlook, apple calendars, etc) may provide API access to your calendar data, it is usually a very involved setup that requires changing account configuration or permissions, dealing with authentication / authorization and reading company specific docs.
@@ -204,4 +207,6 @@ At the same time, they all provide very simple import/export features just a few
 
 PRs, issues and ideas are welcome.
 
-Give the repo a star to show your support! ❤️
+Give the repo a star to show your support!
+
+Crafted by [millisecond studio](https://millisecond.studio/) ❤️
