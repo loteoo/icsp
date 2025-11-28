@@ -162,7 +162,11 @@ $1 == "END" {
 # Pick up relevant values as we go through the file
 in_component == 1 && $1 != "" && $2 != "" {
   found_cols[$1] = found_cols[$1] + 1
-  values[idx, $1] = $2
+  if ((idx, $1) in values) {
+    values[idx, $1] = values[idx, $1] "," $2
+  } else {
+    values[idx, $1] = $2
+  }
 }
 
 END {
